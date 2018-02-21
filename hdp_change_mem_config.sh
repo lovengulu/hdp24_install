@@ -114,7 +114,7 @@ function restart_services {
 #password=admin
 host=localhost 
 	
-set_hadoop_yarm_mem_config $cluster_name $cluster_name $container_ram
+set_hadoop_yarm_mem_config $cluster_name $used_ram_mb $container_ram
 restart_services $cluster_name $host $password YARN MAPREDUCE2 HIVE
 	
 # example: ./hdp_change_mem_config.sh host_group_1 10240 2048
