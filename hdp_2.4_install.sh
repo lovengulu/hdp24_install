@@ -4,7 +4,6 @@
 # TODO: UPDATE THIS LINK: 
 # The install procedure is described here: https://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.6.4/bk_command-line-installation/bk_command-line-installation.pdf
 
-
 fqdn_hostname=`hostname -f`
 
 function setup_password_less_ssh { 
@@ -17,12 +16,6 @@ function setup_password_less_ssh {
 	chmod 700 ~/.ssh
 	chmod 600 ~/.ssh/authorized_keys
 	
-	echo "######  ...... INSTRUCTIONS ......  >>>>>>>"
-	echo "Testing that setup password-less ssh done correctly"
-	echo "please reply 'yes' if asked: Are you sure you want to continue connecting (yes/no)? "
-	echo "If you are asked to enter a password, it means that something went wrong while setting up. Please resolve manually."
-	echo "###### ^^^^^^ INSTRUCTIONS ^^^^^^^  <<<<<<<"
-	echo
 	reply=`ssh -o StrictHostKeyChecking=no $fqdn_hostname date`
 	if [ -z "$reply" ]; then
 		echo 'Error in ssh-keygen process. Please confirm manually and run the script again'
@@ -113,10 +106,7 @@ function ambari_server_config_and_start {
 	echo "https://docs.hortonworks.com/HDPDocuments/Ambari-2.6.1.0/bk_ambari-installation/content/set_up_the_ambari_server.html "
 	
 	# setup with the MySql connector installed previously
-	# TODO: running "ambari-server setup ..." with the options below doesn't install Java and the other required things. Need to find out how to run the install once. 
-	# TODO: Need to findout if I can use the flag "-s" for silent install !!!!!
 	ambari-server setup -s 
-	#ambari-server setup --jdbc-db=mysql --jdbc-driver=/usr/lib/mysql-connector-java-5.1.45/mysql-connector-java-5.1.45-bin.jar
 	ambari-server setup --jdbc-db=mysql --jdbc-driver=/usr/share/java/mysql-connector-java.jar
 	ambari-server start
 } 
@@ -137,10 +127,13 @@ function download_helper_files {
 
 
 function set_hadoop_config {
+	# TODO: use here parameters
+	# upon completion, this functions set: SERVICES_CONFIG with valid JSON configuration. 
+	used_ram_gb=$1 # 10
+	container_ram=$2  # 2024
 
-	used_ram_gb=10
-	container_ram=2024
-
+	
+	
 	used_ram_mb="$((used_ram_gb * 1024))"
 	used_ram_mb_div_10="$((used_ram_mb / 10))"
 	
@@ -161,8 +154,7 @@ function set_hadoop_config {
 # yarn.app.mapreduce.am.command-opts=-Xmx4915m	: "$used_ram_mb_div_10"
 # mapreduce.task.io.sort.mb=2457
  
-	
-	
+
 
 read -r -d '' YARN_SITE <<EOF
     {
@@ -178,7 +170,7 @@ read -r -d '' YARN_SITE <<EOF
 EOF
 
 # There's another config, so add separator 
-YARN_SITE=$YARN_SITE,
+
 
 read -r -d '' MAPRED_SITE <<EOF
     {
@@ -196,16 +188,30 @@ read -r -d '' MAPRED_SITE <<EOF
     }
 EOF
 
-}  #########  end of function     set_hadoop_config  ################
+	# concatenate to $services_config all the configs created above. Separate with commas 
+	
+	SERVICES_CONFIG="$YARN_SITE,$MAPRED_SITE"
+	
+	valid_json=$(echo "[  $SERVICES_CONFIG ] " | python -m json.tool >> /dev/null && echo "0"  || echo "1" )
+	if [ "$valid_json" == "1" ]; then 
+		echo "***********************************************************"
+		echo "ERROR: the following services configuration not in a valid JSON format:  "
+		echo 
+		echo "[  $SERVICES_CONFIG ] "
+		echo "***********************************************************"
+	fi 	
+	
+	}  #########  end of function     set_hadoop_config  ################
 
 
 
 function write_single_custer_blueprint_json {
 # This function expect 3 parameters: blueprint_name, 
+# $SERVICES_CONFIG is optionally set previously. 
 
-blueprint_name=${1:=single-node-hdp-cluster}
-cluster_name=${2:=host_group_1}
-fqdn_hostname=${3:=localhost}
+blueprint_name=${1:-single-node-hdp-cluster}
+cluster_name=${2:-host_group_1}
+fqdn_hostname=${3:-localhost}
 
 
 echo "####################################################################"
@@ -233,8 +239,7 @@ EOF
 
 cat <<EOF > cluster_configuration.json
 {   "configurations" : [ 
-	$YARN_SITE
-	$MAPRED_SITE
+	$SERVICES_CONFIG
 	], 
 	"host_groups" : [ { "name" : "${cluster_name}", "components" : [ 
         { "name" : "NODEMANAGER"},
@@ -277,20 +282,6 @@ EOF
 }   ###### end of: write_single_custer_blueprint_json   ##################################################
 
 
-function blueprint_install {
-
-# PUT /api/v1/stacks/:stack/versions/:stackVersion/operating_systems/:osType/repositories/:repoId
-STACK="HDP"
-STACK_VERSION="2.4"
-OS_TYPE="redhat7"
-REPO_ID="HDP-2.4"
-BASE_URL_HDP=http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0"
-BASE_URL_UTILS=http://public-repo-1.hortonworks.com/HDP-UTILS-1.1.0.20/repos/centos7"
- 
-hdp_json={ \"Repositories\":{ \"base_url\":\"${BASE_URL_HDP}\", \"verify_base_url\":true } }
- 
-}
-
 #	"repo_name": "HDP-2.4.3.0",   
 #HDP Version - HDP-2.4.3.0
 
@@ -316,30 +307,94 @@ cat <<EOF > utils.json
 }
 EOF
 
+STACK="HDP"
+STACK_VERSION="2.4"
+OS_TYPE="redhat7"
+REPO_ID="HDP-2.4"
+BASE_URL_HDP=http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0"
+			 
+BASE_URL_UTILS=http://public-repo-1.hortonworks.com/HDP-UTILS-1.1.0.20/repos/centos7"
+
+# TODO: The following is not valid. fix or remove.  
+# hdp_json={ \"Repositories\":{ \"base_url\":\"${BASE_URL_HDP}\", \"verify_base_url\":true } }
+
+
+wget -nv http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0/hdp.repo -O /etc/yum.repos.d/hdp.repo
+
+#PUT /api/v1/stacks/:stack/versions/:stackVersion/operating_systems/:osType/repositories/:repoId
+
+curl -H "X-Requested-By: ambari" -X PUT -u admin:admin http://localhost:8080/api/v1/stacks/HDP/versions/2.4.3.0/operating_systems/redhat7/repositories/HDP-2.4 -d @repo.json
+curl -H "X-Requested-By: ambari" -X PUT -u admin:admin http://localhost:8080/api/v1/stacks/HDP/versions/2.4.3.0/operating_systems/redhat7/repositories/HDP-UTILS-1.1.0.20 -d @utils.json
+
+
+
 }
 	
 
 ##########################################
 
+
+function blueprint_install {
+
+# Requires 3 parameters:
+# 	$blueprint_name $cluster_name $dest_hostname 
+# Consider adding 2 (or more) optional parameters for the memory and other config parameters. 
+
+
+blueprint_name=${1:-single-node-hdp-cluster}
+cluster_name=${2:-host_group_1}
+dest_hostname=${3:-$fqdn_hostname}
+
+
+echo " #######################    DEBUG ####################### "
+echo fqdn_hostname	$fqdn_hostname
+echo blueprint_name	$blueprint_name	
+echo cluster_name   $cluster_name
+echo dest_hostname  $dest_hostname
+echo " #######################    DEBUG ####################### "
+
+
+# TODO: Move more lines from the steps below into this function. 
+# Consider calling set_hadoop_config() from here with proper parameters 
+
+#set_hadoop_config
+write_single_custer_blueprint_json $blueprint_name $cluster_name $dest_hostname 
+
+#write_repo_json should register the specific stack version to install. The Ambari version used here seems not to interpret it correctly. 
+#write_repo_json()
+
+
+curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://localhost:8080/api/v1/blueprints/${blueprint_name} -d @cluster_configuration.json
+curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://localhost:8080/api/v1/clusters/${cluster_name} -d @hostmapping.json
+
+}
+
+
+### 
 setup_password_less_ssh 
 prepare_the_environment 
 ambari_install 
 setup_mysql
 ambari_server_config_and_start 
 ambari_agent_config_and_start
-
+# TODO: consider moving set_hadoop_config() into blueprint_install()
+#set_hadoop_config 10 2024
+blueprint_install
 #download_helper_files
 
 
 
+
 date
+exit
+
 
 fqdn_hostname=`hostname -f`
 blueprint_name=single-node-hdp-cluster
 cluster_name=host_group_1
 set_hadoop_config
 write_single_custer_blueprint_json $blueprint_name $cluster_name $fqdn_hostname 
-write_repo_json
+
 
 wget -nv http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0/hdp.repo -O /etc/yum.repos.d/hdp.repo
 
@@ -363,8 +418,8 @@ date
 #curl -H "X-Requested-By: ambari" -X DELETE -u admin:admin http://localhost:8080/api/v1/blueprints/${blueprint_name}
 exit
 
-
-
+# TODO: maybe take out all configuration to external CFG file:
+# https://unix.stackexchange.com/questions/175648/use-config-file-for-my-shell-script
 
 
 ##########################################
@@ -632,52 +687,12 @@ su -c -l $HDFS_USER "/usr/hdp/current/hadoop-hdfs-datanode/../hadoop/sbin/hadoop
 
 
 
+#################
 
-# TODO: Some functions removed for test purposes. Be sure to include them all!!!
-
-setup_password_less_ssh 
-prepare_the_environment 
-ambari_install 
-setup_mysql
-ambari_config_start 
-
-yum install ambari-agent -y 
-# in a single-node cluster, it is not mandatory
-sed /etc/ambari-agent/conf/ambari-agent.ini -i.ORIG -e "s/hostname=localhost/hostname=${fqdn_hostname}/"
-ambari-agent start   
-
-date
-fqdn_hostname=`hostname -f`
-blueprint_name=single-node-hdp-cluster
-cluster_name=host_group_1
-
-write_single_custer_blueprint_json $blueprint_name $cluster_name $fqdn_hostname 
-
-
-curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://localhost:8080/api/v1/blueprints/${blueprint_name} -d @cluster_configuration.json
-
-curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://localhost:8080/api/v1/clusters/${cluster_name} -d @hostmapping.json
-
-# and now let's check what is happning ... 
-curl -H "X-Requested-By: ambari" -X GET -u admin:admin http://localhost:8080/api/v1/clusters/${cluster_name}/requests/
-date
-
-
-#curl -H "X-Requested-By: ambari" -X DELETE -u admin:admin http://localhost:8080/api/v1/clusters/${cluster_name}
-#curl -H "X-Requested-By: ambari" -X DELETE -u admin:admin http://localhost:8080/api/v1/blueprints/${blueprint_name}
-exit
-
-
-wget -nv http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0/hdp.repo -O /etc/yum.repos.d/hdp.repo
 
 
 fetch_hdp_manual_install_rpm_helper_files 
 .  $PATH_HDP_MANUAL_INSTALL_RPM_HELPER_FILES/scripts/usersAndGroups.sh
-#users_and_groups    
-set_environment
-install_haddop_core 
-setup_hadoop_config
-validate_core_hadoop_installation 
 
 exit
 
@@ -686,7 +701,6 @@ wget http://public-repo-1.hortonworks.com/HDP/tools/2.4.3.0/hdp_manual_install_r
 tar zxvf hdp_manual_install_rpm_helper_files-2.4.3.0.227.tar.gz
 
 wget http://public-repo-1.hortonworks.com/HDP/tools/2.6.0.3/hdp_manual_install_rpm_helper_files-2.6.0.3.8.tar.gz
-
 tar zxvf hdp_manual_install_rpm_helper_files-2.6.0.3.8.tar.gz
 
 ###############
