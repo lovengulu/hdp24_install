@@ -47,7 +47,7 @@ rm -rf $DATA_HOME_DIR/data/terasort_*
 #free -g && sync && echo 3 > /proc/sys/vm/drop_caches && free -g 
 
 # Generate sample files to sort of $sortsize GiB at $DATAHOME/data/terasort_in_${sortsize}g 
-time sudo -u hdfs $spark_client_path/bin/spark-submit $FLAGS --class com.github.ehiggs.spark.terasort.TeraGen $JAR_PATH/spark-terasort-1.1-SNAPSHOT-jar-with-dependencies.jar ${sortsize}g file://$DATAHOME/data/terasort_in_${sortsize}g
+time sudo -u hdfs $spark_client_path/bin/spark-submit $FLAGS --class com.github.ehiggs.spark.terasort.TeraGen $JAR_PATH/spark-terasort-1.1-SNAPSHOT-jar-with-dependencies.jar ${sortsize}g file://$DATA_HOME_DIR/data/terasort_in_${sortsize}g
 # Sort 
 time sudo -u hdfs $spark_client_path/bin/spark-submit $FLAGS --class com.github.ehiggs.spark.terasort.TeraSort $JAR_PATH/spark-terasort-1.1-SNAPSHOT-jar-with-dependencies.jar file://$DATA_HOME_DIR/data/terasort_in_${sortsize}g file://$DATA_HOME_DIR/data/terasort_out
 # Verify the sort

@@ -114,7 +114,7 @@ function ambari_server_config_and_start {
 function ambari_agent_config_and_start {
 	yum install ambari-agent -y 
 	# in a single-node cluster, it is not mandatory
-	sed /etc/ambari-agent/conf/ambari-agent.ini -i.ORIG -e "s/hostname=localhost/hostname=${fqdn_hostname}/"
+	# sed /etc/ambari-agent/conf/ambari-agent.ini -i.ORIG -e "s/hostname=localhost/hostname=${fqdn_hostname}/"
 	ambari-agent start   
 }
 
@@ -211,7 +211,7 @@ function write_single_custer_blueprint_json {
 
 blueprint_name=${1:-single-node-hdp-cluster}
 cluster_name=${2:-host_group_1}
-fqdn_hostname=${3:-localhost}
+fqdn_hostname=${3:-$fqdn_hostname}
 
 
 echo "####################################################################"
