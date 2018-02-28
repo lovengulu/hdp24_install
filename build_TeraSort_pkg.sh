@@ -3,12 +3,15 @@
 # Install TeraSort 
 #
 
+
 #
-# 1. Assuming JAVA  jdk1.8.0_112 already installed (TBD: how to handle later releases at a later date)
-# 2. Install MAVEN. Needed to build Terasort. (Instructions:  https://maven.apache.org/install.html)
+# 1. Assuming JAVA  jdk1.8.0_112 already installed (Modify if other version is used.)
+# 2. Install MAVEN. Needed to build Terasort. (Detailed Install Instructions:  https://maven.apache.org/install.html)
 # 3. Buile Terasort from: https://github.com/ehiggs/spark-terasort.git 
 # 4. Create Directories for generated files. 
-# 5. Copy the JAR file to location accessible by TBD 
+# 5. Copy the JAR file to location accessible by all users
+# 6. Run's simple TeraSort flow of build-sort-verify. The parameters below to control the size of the data to sort 
+#    and the flags for spark are given here as example.
 
 DATA_HOME_DIR=/
 JAR_PATH=$DATA_HOME_DIR/data

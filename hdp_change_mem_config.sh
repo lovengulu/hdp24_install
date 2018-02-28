@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# TODO: Header, version, 
+# This script is a TEMPLATE for script for changing config and restart of given list of services. 
+
 
 cluster_name=$1
 used_ram_mb=$2

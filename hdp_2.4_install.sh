@@ -4,13 +4,9 @@
 STACK="HDP"
 STACK_VERSION="2.4"
 OS_TYPE="centos7"
-#REPO_ID="HDP-2.6"
 AMBARI_VER="2.6.1.3"
-#BASE_URL_HDP="http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0"
-#BASE_URL_HDP="http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.6.4.0"
 BASE_URL_AMBARI="http://public-repo-1.hortonworks.com/ambari/${OS_TYPE}/2.x/updates/${AMBARI_VER}"
 
-#             http://public-repo-1.hortonworks.com/ambari/centos7/2.x/updates/2.6.1.3
 
 
 fqdn_hostname=`hostname -f`
@@ -211,7 +207,7 @@ EOF
 
 function write_single_custer_blueprint_json {
 # This function expect 3 parameters: blueprint_name, cluster_name fqdn_hostname. Defaults are set below if not passed. 
-# $STACK_VERSION is mandatory (TODO: currently not working)
+# $STACK_VERSION is mandatory (TODO: Feature implemented partially. Complete implementation)
 # $SERVICES_CONFIG is optionally set previously. 
 
 stack_version_int=$(echo $STACK_VERSION | tr -d ".")
@@ -220,10 +216,6 @@ blueprint_name=${1:-single-node-hdp-cluster}
 cluster_name=${2:-host_group_1}
 fqdn_hostname=${3:-$fqdn_hostname}
 
-
-echo "####################################################################"
-echo DEBUG1:  "$YARN_SITE" 	"$MAPRED_SITE"
-echo "####################################################################"
 
 
 read -r -d '' HDP_26_STACK <<EOF
@@ -289,7 +281,6 @@ read -r -d '' HDP_24_STACK <<EOF
         { "name" : "RESOURCEMANAGER"}
 EOF
 		
-###
 
 HDP_STACK=${HDP_24_STACK}
 
@@ -335,6 +326,9 @@ EOF
 
 
 function write_repo_json_HDP_24 {
+# This function should use to select explicit version of stack. 
+# Seems that the Ambari version used doesn't support it properly. 
+
 	
 cat <<EOF > repo.json
 {  
@@ -365,8 +359,6 @@ BASE_URL_HDP=http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.
 			 
 BASE_URL_UTILS=http://public-repo-1.hortonworks.com/HDP-UTILS-1.1.0.20/repos/centos7"
 
-# TODO: The following is not valid. fix or remove.  
-# hdp_json={ \"Repositories\":{ \"base_url\":\"${BASE_URL_HDP}\", \"verify_base_url\":true } }
 
 
 wget -nv http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0/hdp.repo -O /etc/yum.repos.d/hdp.repo
@@ -376,11 +368,8 @@ wget -nv http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.4.3.0/hd
 curl -H "X-Requested-By: ambari" -X PUT -u admin:admin http://localhost:8080/api/v1/stacks/HDP/versions/2.4.3.0/operating_systems/redhat7/repositories/HDP-2.4 -d @repo.json
 curl -H "X-Requested-By: ambari" -X PUT -u admin:admin http://localhost:8080/api/v1/stacks/HDP/versions/2.4.3.0/operating_systems/redhat7/repositories/HDP-UTILS-1.1.0.20 -d @utils.json
 
-
-
 }
 	
-
 
 function blueprint_install {
 
@@ -393,17 +382,7 @@ blueprint_name=${1:-single-node-hdp-cluster}
 cluster_name=${2:-host_group_1}
 dest_hostname=${3:-$fqdn_hostname}
 
-
-echo " #######################    DEBUG2 ####################### "
-echo fqdn_hostname	$fqdn_hostname
-echo blueprint_name	$blueprint_name	
-echo cluster_name   $cluster_name
-echo dest_hostname  $dest_hostname
-echo " #######################    DEBUG ####################### "
-
-
-# TODO: Move more lines from the steps below into this function. 
-# Consider calling set_hadoop_config() from here with proper parameters 
+# TODO: Once tuned for performance, can you set_hadoop_config() to set those parameters at install time.   
 
 #set_hadoop_config
 write_single_custer_blueprint_json $blueprint_name $cluster_name $dest_hostname 
@@ -417,7 +396,7 @@ curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://localhost:8080/ap
 
 }
 
-#####################  EXCECUTE  #########
+#####################  EXCECUTE  Predefined Functions #########
 
 
 setup_password_less_ssh 
@@ -426,10 +405,10 @@ ambari_install
 setup_mysql
 ambari_server_config_and_start 
 ambari_agent_config_and_start
-# TODO: consider moving set_hadoop_config() into blueprint_install()
-#set_hadoop_config 10 2024
 blueprint_install
-#download_helper_files
-
 
 date
+
+echo "Install process can be monitored at: http://${fqdn_hostname}:8080/ "
+echo "User/Password:   admin/admin"
+
