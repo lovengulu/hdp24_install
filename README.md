@@ -34,7 +34,7 @@ This allows to test various settings as part of a batch.
 
 ## Known issues:
 * Currently the install script support single node
-* HDP2.6: hdp24_install script: 
+* Installing HDP2.6: using the hdp24_install script: 
     - hdp24_install script can install HDP 2.6 which a change of a hard-code parameter. Need to remove the hard-coding and allow this as option
     - HDP 2.6 installs fine but some of the services don't start automatically. Those services do start manually. 
 
