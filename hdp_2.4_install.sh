@@ -9,7 +9,7 @@ BASE_URL_AMBARI="http://public-repo-1.hortonworks.com/ambari/${OS_TYPE}/2.x/upda
 
 
 
-fqdn_hostname=`hostname -f`
+fqdn_hostname=`hostname`
 
 function setup_password_less_ssh { 
 	if [ ! -f /root/.ssh/id_rsa ]; then
