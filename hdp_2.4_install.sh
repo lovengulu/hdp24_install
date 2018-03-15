@@ -94,6 +94,7 @@ function setup_mysql {
 
 	cd /usr/lib
 	tar xvfz /tmp/mysql-connector-java-5.1.45.tar.gz
+	mkdir -p /usr/share/java/
 	ln -s /usr/lib/mysql-connector-java-5.1.45/mysql-connector-java-5.1.45-bin.jar /usr/share/java/mysql-connector-java.jar
 	cd - 
 	
@@ -391,8 +392,8 @@ write_single_custer_blueprint_json $blueprint_name $cluster_name $dest_hostname
 #write_repo_json()
 
 
-curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://localhost:8080/api/v1/blueprints/${blueprint_name} -d @cluster_configuration.json
-curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://localhost:8080/api/v1/clusters/${cluster_name} -d @hostmapping.json
+curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://${dest_hostname}:8080/api/v1/blueprints/${blueprint_name} -d @cluster_configuration.json
+curl -H "X-Requested-By: ambari" -X POST -u admin:admin http://${dest_hostname}:8080/api/v1/clusters/${cluster_name} -d @hostmapping.json
 
 }
 
